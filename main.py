@@ -3,7 +3,6 @@ import logging
 import asyncio
 import os
 import sqlite3
-from flask import Flask, request
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
@@ -43,9 +42,6 @@ logger.info("Database initialized")
 
 # ---------------- APPLICATION ----------------
 app = Application.builder().token(BOT_TOKEN).build()
-
-# ---------------- FLASK ----------------
-flask_app = Flask(__name__)
 
 # ---------------- HANDLERS ----------------
 
@@ -111,19 +107,6 @@ app.add_handler(CommandHandler("defgroupid", defgroupid))
 app.add_handler(CallbackQueryHandler(start, pattern="^start$"))
 app.add_handler(CallbackQueryHandler(tombol_handler))
 app.add_handler(MessageHandler(filters.ALL, handle_private_message, block=False))
-
-
-# ---------------- FLASK ROUTE UNTUK WEBHOOK ----------------
-@flask_app.post("/webhook")
-async def webhook():
-    try:
-        data = await request.get_json(force=True)
-        update = Update.de_json(data, app.bot)
-        await app.process_update(update)
-    except Exception as e:
-        logger.error(f"Webhook error: {e}", exc_info=True)
-        return "error", 500
-    return "ok", 200
 
 
 # ---------------- SETUP WEBHOOK ----------------
