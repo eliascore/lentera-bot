@@ -109,13 +109,6 @@ app.add_handler(CallbackQueryHandler(tombol_handler))
 app.add_handler(MessageHandler(filters.ALL, handle_private_message, block=False))
 
 
-# ---------------- SETUP WEBHOOK ----------------
-async def set_webhook():
-    webhook_url = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/webhook"
-    await app.bot.set_webhook(webhook_url)
-    logger.info(f"Webhook set ke {webhook_url}")
-
-
 # ---------------- ENTRYPOINT ----------------
 if __name__ == "__main__":
     PORT = int(os.environ.get("PORT", "8443"))
