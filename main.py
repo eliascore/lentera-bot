@@ -118,17 +118,16 @@ async def set_webhook():
 
 # ---------------- ENTRYPOINT ----------------
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))
-    # Render inject env RENDER_EXTERNAL_HOSTNAME, contoh: namabot.onrender.com
-    host = os.getenv("RENDER_EXTERNAL_HOSTNAME")
-    if not host:
-        raise RuntimeError("RENDER_EXTERNAL_HOSTNAME env var tidak ditemukan!")
-    webhook_url = f"https://{host}/webhook"
+    PORT = int(os.environ.get("PORT", "8443"))
+    HOST = os.environ.get("HOST", "lentera-bot.onrender.com")  # domain render
+    WEBHOOK_PATH = "webhook"
+    WEBHOOK_URL = f"https://{HOST}/{WEBHOOK_PATH}"
 
-    logger.info(f"Starting bot webhook at {webhook_url} on port {port}")
+    logger.info(f"Starting webhook on port {PORT} with URL {WEBHOOK_URL}")
     app.run_webhook(
         listen="0.0.0.0",
-        port=port,
-        url_path="",         # root path
-        webhook_url=webhook_url,
+        port=PORT,
+        url_path=WEBHOOK_PATH,
+        webhook_url=WEBHOOK_URL,
+        max_connections=40,
     )
