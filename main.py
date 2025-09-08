@@ -2,10 +2,29 @@
 import logging
 import asyncio
 import os
+import sqlite3
+from flask import Flask, request
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
+
 from config import BOT_TOKEN, MENU
-from handlers.forwarder import forward_user_message, handle_group_reply, defgroupid, handle_group_id_input, debuggroup, waiting_for_group_id, handle_private_message
+from handlers.forwarder import (
+    forward_user_message,
+    handle_group_reply,
+    defgroupid,
+    handle_group_id_input,
+    debuggroup,
+    waiting_for_group_id,
+    handle_private_message,
+)
 from db import init_db, get_admin_group_id, is_user_in_chat, add_to_cart, get_cart
 from produk import produk
 from utils import safe_reply
@@ -14,8 +33,7 @@ from handlers.tombol import tombol_handler
 
 # ---------------- LOGGING ----------------
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.DEBUG
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.DEBUG
 )
 logger = logging.getLogger(__name__)
 
@@ -24,17 +42,23 @@ init_db()
 logger.info("Database initialized")
 
 # ---------------- APPLICATION ----------------
-app = ApplicationBuilder().token(BOT_TOKEN).build()
+app = Application.builder().token(BOT_TOKEN).build()
+
+# ---------------- FLASK ----------------
+flask_app = Flask(__name__)
 
 # ---------------- HANDLERS ----------------
-from telegram import Update
-from telegram.ext import ContextTypes
+
 
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     logger.debug(f"/start called by user {update.effective_user.id}")
-    username = update.effective_user.username or update.effective_user.first_name or "TanpaNama"
+    username = (
+        update.effective_user.username
+        or update.effective_user.first_name
+        or "TanpaNama"
+    )
 
     # kalau ini dipicu dari tombol, edit pesan lama
     if update.callback_query:
@@ -43,11 +67,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         keyboard = [
             [InlineKeyboardButton("Mau Lihat Katalog 📖", url=MENU)],
-            [InlineKeyboardButton("Chat dengan Admin", callback_data="start_chat")]
+            [InlineKeyboardButton("Chat dengan Admin", callback_data="start_chat")],
         ]
         await query.edit_message_text(
             text="Halo! Apa yang kamu butuhkan? 😸",
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            reply_markup=InlineKeyboardMarkup(keyboard),
         )
         return
 
@@ -64,24 +88,57 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if is_user_in_chat(user_id):
         keyboard = [[InlineKeyboardButton("Keluar dari mode chat", callback_data="exit_chat")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text("Halo! Kamu dalam mode chat dengan admin.", reply_markup=reply_markup)
+        await update.message.reply_text(
+            "Halo! Kamu dalam mode chat dengan admin.", reply_markup=reply_markup
+        )
         return
 
-    keyboard = [[InlineKeyboardButton("Mau Lihat Katalog 📖", url=MENU)],
-                [InlineKeyboardButton("Chat dengan Admin", callback_data="start_chat")]]
-    await safe_reply(update=update,
-                     text="Halo! Apa yang kamu butuhkan? 😸",
-                     reply_markup=InlineKeyboardMarkup(keyboard))
+    keyboard = [
+        [InlineKeyboardButton("Mau Lihat Katalog 📖", url=MENU)],
+        [InlineKeyboardButton("Chat dengan Admin", callback_data="start_chat")],
+    ]
+    await safe_reply(
+        update=update,
+        text="Halo! Apa yang kamu butuhkan? 😸",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
 
+
+# ---------------- REGISTER HANDLERS ----------------
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("debuggroup", debuggroup))
 app.add_handler(CommandHandler("defgroupid", defgroupid))
 app.add_handler(CallbackQueryHandler(start, pattern="^start$"))
 app.add_handler(CallbackQueryHandler(tombol_handler))
-
 app.add_handler(MessageHandler(filters.ALL, handle_private_message, block=False))
 
-# ---------------- RUN ----------------
-logger.info("Bot starting polling...")
-app.run_polling()
 
+# ---------------- FLASK ROUTE UNTUK WEBHOOK ----------------
+@flask_app.post("/webhook")
+async def webhook():
+    try:
+        data = await request.get_json(force=True)
+        update = Update.de_json(data, app.bot)
+        await app.process_update(update)
+    except Exception as e:
+        logger.error(f"Webhook error: {e}", exc_info=True)
+        return "error", 500
+    return "ok", 200
+
+
+# ---------------- SETUP WEBHOOK ----------------
+async def set_webhook():
+    webhook_url = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/webhook"
+    await app.bot.set_webhook(webhook_url)
+    logger.info(f"Webhook set ke {webhook_url}")
+
+
+# ---------------- ENTRYPOINT ----------------
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 5000))
+
+    async def run():
+        await set_webhook()
+        flask_app.run(host="0.0.0.0", port=port)
+
+    asyncio.run(run())
