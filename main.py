@@ -15,7 +15,7 @@ from telegram.ext import (
     filters,
 )
 
-from config import BOT_TOKEN, MENU
+from config import BOT_TOKEN, MENU, RENDER_EXTERNAL_HOSTNAME
 from handlers.forwarder import (
     forward_user_message,
     handle_group_reply,
