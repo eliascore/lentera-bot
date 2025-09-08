@@ -79,4 +79,18 @@ def save_message_mapping(user_id: int, user_message_id: int, group_message_id: i
         c.execute("INSERT INTO messages(user_id, user_message_id, group_message_id, content) VALUES (?, ?, ?, ?)",
                   (user_id, user_message_id, group_message_id, content))
         conn.commit()
-        logger.debug(f"Sav
+        logger.debug(f"Saved message mapping: user {user_id}, user_msg {user_message_id}, group_msg {group_message_id}")
+    except Exception as e:
+        logger.error(f"Failed to save message mapping for user {user_id}: {e}")
+
+def get_user_by_group_message_id(group_message_id: int):
+    try:
+        c.execute("SELECT user_id, user_message_id FROM messages WHERE group_message_id=?", (group_message_id,))
+        row = c.fetchone()
+        if row:
+            logger.debug(f"Found mapping for group_message_id {group_message_id}: user_id={row[0]}, user_message_id={row[1]}")
+            return row
+        return None
+    except Exception as e:
+        logger.error(f"Failed to get user by group_message_id {group_message_id}: {e}")
+        return None
