@@ -38,7 +38,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.debug(f"/start called by user {update.effective_user.id}")
     username = update.effective_user.username or update.effective_user.first_name or "TanpaNama"
 
-        # kalau ini dipicu dari tombol, edit pesan lama
+    # kalau ini dipicu dari tombol, edit pesan lama
     if update.callback_query:
         query = update.callback_query
         await query.answer()  # supaya loading di tombol hilang
@@ -78,6 +78,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("debuggroup", debuggroup))
 app.add_handler(CommandHandler("defgroupid", defgroupid))
+app.add_handler(CallbackQueryHandler(start, pattern="^start$"))
 app.add_handler(CallbackQueryHandler(tombol_handler))
 
 app.add_handler(MessageHandler(filters.ALL, handle_private_message, block=False))

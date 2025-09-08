@@ -1,9 +1,12 @@
 # handlers/forwarder.py
 import logging
+import sqlite3
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from db import is_user_in_chat, get_admin_group_id, save_message_mapping, get_user_by_group_message_id, set_admin_group_id
 from telegram.ext import CallbackQueryHandler
+from handlers.feedback import monitor_feedback
 
 # ---------------- LOGGING ----------------
 logger = logging.getLogger(__name__)
@@ -16,6 +19,7 @@ async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_T
     user_id = update.effective_user.id
     chat_type = update.message.chat.type if update.message else None
     text = update.message.text or ""
+    message = update.effective_message
 
     if text.startswith("/defgroupid"):
         await defgroupid(update, context)
@@ -26,7 +30,12 @@ async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_T
         await handle_group_id_input(update, context)
         return
 
-    # 2️⃣ Private chat - user biasa, forward ke grup
+    # Private chat - nota pembayaran
+    if message.caption and "bukti pembayaran" in message.caption:
+        await monitor_feedback(update, context)
+        return
+    
+        # 2️⃣ Private chat - user biasa, forward ke grup
     if chat_type == "private":
         await forward_user_message(update, context)
         return
@@ -106,6 +115,49 @@ async def handle_group_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
     ADMIN_GROUP_ID = get_admin_group_id()
     if update.message.chat_id != ADMIN_GROUP_ID or not update.message.reply_to_message:
         return
+    
+    msg = update.message
+
+    original = msg.reply_to_message
+    forwarded_from = original.forward_origin
+    if not forwarded_from:
+        return
+
+    # Cek apakah ini pesan dari user hidden/forward
+    if forwarded_from.type != "hidden_user":
+        return
+
+    # Ambil username/nama asli user dari forward origin
+    sender_name = forwarded_from.sender_user_name
+    logger.debug(f"Admin reply to {sender_name}: {msg.text}")
+
+    # Cari user_id dari mapping message (wajib ada fungsi mapping di sistem)
+    user_id = get_user_by_group_message_id(original.message_id)  # asumsi ada fungsi ini
+    if not user_id:
+        logger.warning("Tidak bisa menemukan user_id dari reply admin.")
+        return
+    
+    if isinstance(user_id, tuple):
+        user_id = user_id[0]
+
+    # Jika admin ketik "/end", akhiri mode chat
+    if msg.text.strip() == "/end":
+        from db import conn
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM chat_mode WHERE user_id=?", (user_id,))
+        conn.commit()
+        logger.debug(f"Mode chat user {user_id} dihapus (admin mengakhiri).")
+
+        keyboard = [[InlineKeyboardButton("🏠 Menu Utama", callback_data="start")]]
+        try:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text="❌ Admin mengakhiri chat.",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        except Exception as e:
+            logger.error(f"Gagal kirim pesan akhir ke user {user_id}: {e}")
+        return    
 
     reply_to_id = update.message.reply_to_message.message_id
     row = get_user_by_group_message_id(reply_to_id)

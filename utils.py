@@ -1,8 +1,13 @@
+import logging
+
 import requests
 import time
 from telegram import Update
 from telegram.ext import ContextTypes
 from config import KEYWORDS
+
+# ---------------- LOGGING ----------------
+logger = logging.getLogger(__name__)
 
 # fungsi OCR
 def ocr_image_bytes_mode(img_bytes, mode="merchant", keywords=None):

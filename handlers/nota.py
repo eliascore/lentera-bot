@@ -1,3 +1,4 @@
+import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext  # kalau kamu pakai context di tempat lain
 
@@ -5,6 +6,9 @@ from telegram.ext import CallbackContext  # kalau kamu pakai context di tempat l
 from config import MENU          # kamu panggil di url tombol
 from db import add_to_cart, get_cart          # atau dari mana pun get_cart berasal
 from utils import safe_reply     # kamu panggil di else terakhir
+
+# ---------------- LOGGING ----------------
+logger = logging.getLogger(__name__)
 
 async def kirim_nota(update: Update, user_id: int):
     user = update.effective_user

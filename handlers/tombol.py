@@ -1,4 +1,5 @@
 import sqlite3
+import logging
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, CallbackQueryHandler
@@ -9,6 +10,8 @@ from db import is_user_in_chat, get_admin_group_id, save_message_mapping, get_us
 from utils import generate_kode_bayar, obfuscate_kode, create_order_id
 from config import DB_FILE
 
+# ---------------- LOGGING ----------------
+logger = logging.getLogger(__name__)
 
 async def tombol_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = update.effective_user.username or update.effective_user.first_name or "TanpaNama"

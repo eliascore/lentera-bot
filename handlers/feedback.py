@@ -1,14 +1,16 @@
+import logging
+
 import sqlite3, asyncio
 from io import BytesIO
 from telegram import Update
 from telegram.ext import ContextTypes
-from config import ADMIN_GROUP_ID, KEYWORDS as keywords
+from config import KEYWORDS as keywords
 from utils import safe_reply, ocr_image_bytes_mode, extract_rp_amounts
-from db import (get_pending_payment, get_cart_total, get_cart, mark_cart_done,
-                clear_pending_payment, simpan_message_map,
-                ambil_kode_dan_metode_bayar)
+from db import get_pending_payment, get_cart_total, get_cart, mark_cart_done, clear_pending_payment, ambil_kode_dan_metode_bayar, get_admin_group_id, save_message_mapping
 from config import DB_FILE
 
+# ---------------- LOGGING ----------------
+logger = logging.getLogger(__name__)
 
 # =======================
 # MONITOR FEEDBACK
@@ -131,16 +133,17 @@ async def monitor_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo_stream = BytesIO(file_bytes)
     photo_stream.name = "bukti.jpg"
     photo_stream.seek(0)
+    ADMIN_GROUP_ID = get_admin_group_id()
 
     # Kirim ke grup admin & simpan message_id
     try:
         sent_msg = await context.bot.send_photo(chat_id=ADMIN_GROUP_ID,
                                                 photo=photo_stream,
                                                 caption=caption)
-        session_id = simpan_message_map(
-            group_message_id=sent_msg.message_id,
-            user_message_id=update.message.message_id,
-            user_id=user_id)
+        
+        content_desc = sent_msg.text or sent_msg.caption or "MEDIA"
+        session_id = save_message_mapping(user_id, update.message.message_id, sent_msg.message_id, content_desc)
+
         print(f"[DEBUG] Session ID tersimpan: {session_id}")
         await safe_reply(update=update,
                          text="Sukses! Mohon Tunggu Balasan Admin.")
@@ -148,6 +151,11 @@ async def monitor_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await safe_reply(update=update,
                          text=f"❌ Gagal kirim bukti ke admin: {e}")
         return
+    
+    from db import conn
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO chat_mode(user_id, active) VALUES (?, ?)", (user_id, 1))
+    conn.commit()
 
     # Tandai cart done & hapus pending payment
     mark_cart_done(user_id)
