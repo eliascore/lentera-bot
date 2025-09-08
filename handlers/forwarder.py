@@ -75,30 +75,6 @@ async def handle_group_id_input(update: Update, context: ContextTypes.DEFAULT_TY
     finally:
         waiting_for_group_id.discard(user_id)
 
-# ---------------- BUTTON HANDLER ----------------
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    user_id = query.from_user.id
-    logger.debug(f"Button pressed by {user_id} with data={query.data}")
-
-    if query.data == "start_chat":
-        from db import conn
-        cursor = conn.cursor()
-        cursor.execute("INSERT OR REPLACE INTO chat_mode(user_id, active) VALUES (?, ?)", (user_id, 1))
-        conn.commit()
-        logger.debug(f"User {user_id} masuk mode chat")
-        keyboard = [[InlineKeyboardButton("Keluar dari mode chat", callback_data="exit_chat")]]
-        await query.edit_message_text("Anda sekarang dapat chat dengan Admin.")
-
-    elif query.data == "exit_chat":
-        from db import conn
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM chat_mode WHERE user_id=?", (user_id,))
-        conn.commit()
-        logger.debug(f"User {user_id} keluar dari mode chat")
-        await query.edit_message_text("Anda keluar dari mode chat.")
-
 # ---------------- FORWARD USER MESSAGE ----------------
 async def forward_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
