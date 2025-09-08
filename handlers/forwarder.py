@@ -113,77 +113,56 @@ async def forward_user_message(update: Update, context: ContextTypes.DEFAULT_TYP
 # ---------------- HANDLE ADMIN REPLY ----------------
 async def handle_group_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ADMIN_GROUP_ID = get_admin_group_id()
-    if update.message.chat_id != ADMIN_GROUP_ID or not update.message.reply_to_message:
-        return
-    
     msg = update.message
 
+    if not msg or msg.chat_id != ADMIN_GROUP_ID or not msg.reply_to_message:
+        return
+
     original = msg.reply_to_message
-    forwarded_from = original.forward_origin
-    if not forwarded_from:
-        return
-
-    # Cek apakah ini pesan dari user hidden/forward
-    if forwarded_from.type != "hidden_user":
-        return
-
-    # Ambil username/nama asli user dari forward origin
-    sender_name = forwarded_from.sender_user_name
-    logger.debug(f"Admin reply to {sender_name}: {msg.text}")
-
-    # Cari user_id dari mapping message (wajib ada fungsi mapping di sistem)
-    user_id = get_user_by_group_message_id(original.message_id)  # asumsi ada fungsi ini
-    if not user_id:
+    row = get_user_by_group_message_id(original.message_id)
+    if not row:
         logger.warning("Tidak bisa menemukan user_id dari reply admin.")
         return
-    
-    if isinstance(user_id, tuple):
-        user_id = user_id[0]
 
-    # Jika admin ketik "/end", akhiri mode chat
-    if msg.text.strip() == "/end":
+    user_id, user_message_id = row
+
+    # Jika admin ketik "/end"
+    if msg.text and msg.text.strip() == "/end":
         from db import conn
         cursor = conn.cursor()
         cursor.execute("DELETE FROM chat_mode WHERE user_id=?", (user_id,))
         conn.commit()
-        logger.debug(f"Mode chat user {user_id} dihapus (admin mengakhiri).")
 
         keyboard = [[InlineKeyboardButton("🏠 Menu Utama", callback_data="start")]]
-        try:
-            await context.bot.send_message(
-                chat_id=user_id,
-                text="❌ Admin mengakhiri chat.",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-        except Exception as e:
-            logger.error(f"Gagal kirim pesan akhir ke user {user_id}: {e}")
-        return    
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="❌ Admin mengakhiri chat.",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        logger.debug(f"Mode chat user {user_id} dihapus (admin mengakhiri).")
+        return
 
-    reply_to_id = update.message.reply_to_message.message_id
-    row = get_user_by_group_message_id(reply_to_id)
-    if row:
-        user_id, user_message_id = row
-        try:
-            if update.message.text:
-                await context.bot.send_message(chat_id=user_id, text=update.message.text)
-            elif update.message.sticker:
-                await context.bot.send_sticker(chat_id=user_id, sticker=update.message.sticker.file_id)
-            elif update.message.photo:
-                photo = update.message.photo[-1].file_id
-                await context.bot.send_photo(chat_id=user_id, photo=photo, caption=update.message.caption)
-            elif update.message.video:
-                await context.bot.send_video(chat_id=user_id, video=update.message.video.file_id, caption=update.message.caption)
-            elif update.message.document:
-                await context.bot.send_document(chat_id=user_id, document=update.message.document.file_id, caption=update.message.caption)
-            elif update.message.audio:
-                await context.bot.send_audio(chat_id=user_id, audio=update.message.audio.file_id)
-            elif update.message.voice:
-                await context.bot.send_voice(chat_id=user_id, voice=update.message.voice.file_id)
-            else:
-                await context.bot.send_message(chat_id=user_id, text="MEDIA")
-            logger.debug(f"Forwarded admin reply from group {ADMIN_GROUP_ID} to user {user_id}")
-        except Exception as e:
-            logger.error(f"Gagal forward reply ke user {user_id}: {e}")
+    # Forward balasan admin ke user
+    try:
+        if msg.text:
+            await context.bot.send_message(chat_id=user_id, text=msg.text, reply_to_message_id=user_message_id)
+        elif msg.sticker:
+            await context.bot.send_sticker(chat_id=user_id, sticker=msg.sticker.file_id)
+        elif msg.photo:
+            await context.bot.send_photo(chat_id=user_id, photo=msg.photo[-1].file_id, caption=msg.caption)
+        elif msg.video:
+            await context.bot.send_video(chat_id=user_id, video=msg.video.file_id, caption=msg.caption)
+        elif msg.document:
+            await context.bot.send_document(chat_id=user_id, document=msg.document.file_id, caption=msg.caption)
+        elif msg.audio:
+            await context.bot.send_audio(chat_id=user_id, audio=msg.audio.file_id)
+        elif msg.voice:
+            await context.bot.send_voice(chat_id=user_id, voice=msg.voice.file_id)
+        else:
+            await context.bot.send_message(chat_id=user_id, text="(media tidak dikenali)")
+        logger.debug(f"Forwarded admin reply from group {ADMIN_GROUP_ID} to user {user_id}")
+    except Exception as e:
+        logger.error(f"Gagal forward reply ke user {user_id}: {e}")
 
 # -------------------- /debuggroup --------------------
 async def debuggroup(update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -20,7 +20,7 @@ def ocr_image_bytes_mode(img_bytes, mode="merchant", keywords=None):
     if mode == "merchant":
         # default merchant keywords
         if keywords is None:
-            keywords = keywords
+            keywords = ["MORK", "WR BU IPAT"]   # isi sesuai kebutuhan merchant
     elif mode == "kode_bayar":
         if not keywords:
             raise ValueError(

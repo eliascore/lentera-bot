@@ -65,14 +65,18 @@ async def monitor_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.close()
 
     # Tentukan mode OCR lebih awal
-    if kode_bayar and any(m in kode_bayar.upper()
-                          for m in ["QRIS", "DANA", "GOPAY"]):
+    if kode_bayar and any(m in kode_bayar.upper() for m in ["QRIS", "DANA", "GOPAY"]):
         ocr_mode = "merchant"
     elif not kode_bayar:
-        # fallback untuk merchant tanpa kode
-        ocr_mode = "merchant"
+        ocr_mode = "merchant"  # fallback tanpa kode
     else:
         ocr_mode = "kode_bayar"
+
+    # Tentukan keywords sesuai mode
+    if ocr_mode == "kode_bayar":
+        keywords = kode_bayar
+    else:
+        keywords = None
 
     # Hanya enforce kode bayar kalau bukan merchant
     if not kode_bayar and ocr_mode != "merchant":

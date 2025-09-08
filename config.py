@@ -8,7 +8,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 if not BOT_TOKEN:
   raise ValueError("❌ TOKEN Telegram belum diatur di environment variable.")
-MENU = "https://t.me/developerlentera/4"
+MENU = "https://t.me/lenteraword/208"
 
 DB_FILE = "chat.db"
 

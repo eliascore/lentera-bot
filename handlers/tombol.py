@@ -156,6 +156,6 @@ async def tombol_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             nomor = "+6285713869358"
             await query.message.reply_text(
                 f"💰 Bayarkan ke nomor berikut: {nomor}\n"
-                f"🆔 Kode Bayar: {kode_bayar_str}\n\n"
-                f"⚠️ Pastikan menuliskan Kode Bayar ini di bukti pembayaran agar otomatis terdeteksi.",
+                f"🆔 Pada deskripsi pembayaran tulis: {kode_bayar_str}\n\n"
+                f"⚠️ Pastikan menuliskan Kode Bayar ini di deskripsi pembayaran agar otomatis terdeteksi.",
                 parse_mode="Markdown")
