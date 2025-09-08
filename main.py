@@ -1,9 +1,7 @@
 # main.py
 import logging
-
 import asyncio
 import os
-
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 from config import BOT_TOKEN, MENU
